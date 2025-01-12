@@ -17,7 +17,7 @@ var app = builder.Build();
 
 Console.WriteLine($" Active Environment: {app.Environment.EnvironmentName}");
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
