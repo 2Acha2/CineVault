@@ -29,7 +29,19 @@
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5142"
+    },
+    "http-Local": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Local",
+        "ConnectionStrings__DefaultConnection": "Server=localhost;Database=LocalDB;User Id=local_user;Password=local_pass;"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:5143"
     }
+
   },
   "$schema": "http://json.schemastore.org/launchsettings.json",
   "iisSettings": {
