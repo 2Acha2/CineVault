@@ -15,6 +15,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+Console.WriteLine($" Active Environment: {app.Environment.EnvironmentName}");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
