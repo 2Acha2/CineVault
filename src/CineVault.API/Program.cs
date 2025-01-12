@@ -17,6 +17,11 @@ var app = builder.Build();
 
 Console.WriteLine($" Active Environment: {app.Environment.EnvironmentName}");
 
+if (app.Environment.IsLocal())
+{
+    app.UseDeveloperExceptionPage();
+}
+
 if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Local")
 {
     app.UseSwagger();
