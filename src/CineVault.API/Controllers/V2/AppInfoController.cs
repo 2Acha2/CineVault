@@ -23,5 +23,19 @@ namespace CineVault.API.Controllers.V2
         {
             return Ok(new { Environment = _env.EnvironmentName });
         }
+
+        [HttpGet("environmentV2")]
+        public IActionResult GetEnvironmentV2()
+        {
+            var response = new
+            {
+                Environment = _env.EnvironmentName,
+                Version = "v2",  // Вказуємо версію API
+                Date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),  // Поточна дата та час
+                Status = "OK"
+            };
+
+            return Ok(response);
+        }
     }
 }

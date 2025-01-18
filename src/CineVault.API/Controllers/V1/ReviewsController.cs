@@ -104,19 +104,19 @@ public sealed class ReviewsController : ControllerBase
         return Ok();
     }
 
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteReview(int id)
-    {
-        var review = await this.dbContext.Reviews.FindAsync(id);
+    //[HttpDelete("{id}")]
+    //public async Task<ActionResult> DeleteReview(int id)
+    //{
+    //    var review = await this.dbContext.Reviews.FindAsync(id);
 
-        if (review is null)
-        {
-            return NotFound();
-        }
+    //    if (review is null)
+    //    {
+    //        return NotFound();
+    //    }
 
-        this.dbContext.Reviews.Remove(review);
-        await this.dbContext.SaveChangesAsync();
+    //    this.dbContext.Reviews.Remove(review);
+    //    await this.dbContext.SaveChangesAsync();
 
-        return Ok();
-    }
+    //    return Ok();
+    //}
 }

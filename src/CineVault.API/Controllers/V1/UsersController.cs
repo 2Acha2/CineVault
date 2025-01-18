@@ -87,19 +87,19 @@ public class UsersController : ControllerBase
         return base.Ok();
     }
 
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteUser(int id)
-    {
-        var user = await this.dbContext.Users.FindAsync(id);
+    //[HttpDelete("{id}")]
+    //public async Task<ActionResult> DeleteUser(int id)
+    //{
+    //    var user = await this.dbContext.Users.FindAsync(id);
 
-        if (user is null)
-        {
-            return base.NotFound();
-        }
+    //    if (user is null)
+    //    {
+    //        return base.NotFound();
+    //    }
 
-        this.dbContext.Users.Remove(user);
-        await this.dbContext.SaveChangesAsync();
+    //    this.dbContext.Users.Remove(user);
+    //    await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
-    }
+    //    return base.Ok();
+    //}
 }

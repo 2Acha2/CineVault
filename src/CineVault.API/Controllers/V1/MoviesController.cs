@@ -108,19 +108,19 @@ public sealed class MoviesController : ControllerBase
         return Ok();
     }
 
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteMovie(int id)
-    {
-        var movie = await this.dbContext.Movies.FindAsync(id);
+    //[HttpDelete("{id}")]
+    //public async Task<ActionResult> DeleteMovie(int id)
+    //{
+    //    var movie = await this.dbContext.Movies.FindAsync(id);
 
-        if (movie is null)
-        {
-            return NotFound();
-        }
+    //    if (movie is null)
+    //    {
+    //        return NotFound();
+    //    }
 
-        this.dbContext.Movies.Remove(movie);
-        await this.dbContext.SaveChangesAsync();
+    //    this.dbContext.Movies.Remove(movie);
+    //    await this.dbContext.SaveChangesAsync();
 
-        return Ok();
-    }
+    //    return Ok();
+    //}
 }
