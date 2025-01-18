@@ -1,11 +1,12 @@
-﻿using CineVault.API.Controllers.Requests;
+﻿using Asp.Versioning;
+using CineVault.API.Controllers.Requests;
 using CineVault.API.Controllers.Responses;
 using CineVault.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace CineVault.API.Controllers;
-
+namespace CineVault.API.Controllers.V2;
+[ApiVersion(2)]
 [Route("api/[controller]/[action]")]
 public sealed class ReviewsController : ControllerBase
 {
@@ -35,7 +36,7 @@ public sealed class ReviewsController : ControllerBase
             })
             .ToListAsync();
 
-        return base.Ok(reviews);
+        return Ok(reviews);
     }
 
     [HttpGet("{id}")]
@@ -48,7 +49,7 @@ public sealed class ReviewsController : ControllerBase
 
         if (review is null)
         {
-            return base.NotFound();
+            return NotFound();
         }
 
         var response = new ReviewResponse
@@ -63,7 +64,7 @@ public sealed class ReviewsController : ControllerBase
             CreatedAt = review.CreatedAt
         };
 
-        return base.Ok(response);
+        return Ok(response);
     }
 
     [HttpPost]
@@ -80,7 +81,7 @@ public sealed class ReviewsController : ControllerBase
         this.dbContext.Reviews.Add(review);
         await this.dbContext.SaveChangesAsync();
 
-        return base.Created();
+        return Created();
     }
 
     [HttpPut("{id}")]
@@ -90,7 +91,7 @@ public sealed class ReviewsController : ControllerBase
 
         if (review is null)
         {
-            return base.NotFound();
+            return NotFound();
         }
 
         review.MovieId = request.MovieId;
@@ -100,7 +101,7 @@ public sealed class ReviewsController : ControllerBase
 
         await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
+        return Ok();
     }
 
     [HttpDelete("{id}")]
@@ -110,12 +111,12 @@ public sealed class ReviewsController : ControllerBase
 
         if (review is null)
         {
-            return base.NotFound();
+            return NotFound();
         }
 
         this.dbContext.Reviews.Remove(review);
         await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
+        return Ok();
     }
 }

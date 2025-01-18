@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Asp.Versioning;
+using Microsoft.AspNetCore.Mvc;
 
-namespace CineVault.API.Controllers
+namespace CineVault.API.Controllers.V1
 {
+    [ApiVersion(1)]
     [Route("api/[controller]")]
     [ApiController]
     public class AppInfoController : ControllerBase
