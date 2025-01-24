@@ -1,6 +1,7 @@
 ﻿using CineVault.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Serilog;
 [assembly: ApiController]
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,13 @@ builder.Logging.AddConsole(options =>
 }
 );
 builder.Logging.AddDebug();
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 
