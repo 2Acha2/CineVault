@@ -3,6 +3,7 @@ using CineVault.API.Controllers.Responses;
 using CineVault.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CineVault.API.Controllers;
 
@@ -10,15 +11,19 @@ namespace CineVault.API.Controllers;
 public sealed class ReviewsController : ControllerBase
 {
     private readonly CineVaultDbContext dbContext;
+    private readonly ILogger<ReviewsController> logger;
 
-    public ReviewsController(CineVaultDbContext dbContext)
+    public ReviewsController(CineVaultDbContext dbContext, ILogger<ReviewsController> logger)
     {
         this.dbContext = dbContext;
+        this.logger = logger;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<ReviewResponse>>> GetReviews()
     {
+        logger.LogInformation("Fetching all reviews from the database.");
+
         var reviews = await this.dbContext.Reviews
             .Include(r => r.Movie)
             .Include(r => r.User)
@@ -35,12 +40,15 @@ public sealed class ReviewsController : ControllerBase
             })
             .ToListAsync();
 
-        return base.Ok(reviews);
+        logger.LogInformation("Fetched {Count} reviews successfully.", reviews.Count);
+        return Ok(reviews);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ReviewResponse>> GetReviewById(int id)
     {
+        logger.LogInformation("Fetching review with ID: {ReviewId}", id);
+
         var review = await this.dbContext.Reviews
             .Include(r => r.Movie)
             .Include(r => r.User)
@@ -48,8 +56,11 @@ public sealed class ReviewsController : ControllerBase
 
         if (review is null)
         {
-            return base.NotFound();
+            logger.LogWarning("Review with ID: {ReviewId} not found.", id);
+            return NotFound();
         }
+
+        logger.LogInformation("Fetched review with ID: {ReviewId} successfully.", id);
 
         var response = new ReviewResponse
         {
@@ -63,12 +74,14 @@ public sealed class ReviewsController : ControllerBase
             CreatedAt = review.CreatedAt
         };
 
-        return base.Ok(response);
+        return Ok(response);
     }
 
     [HttpPost]
     public async Task<ActionResult> CreateReview(ReviewRequest request)
     {
+        logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.MovieId, request.UserId);
+
         var review = new Review
         {
             MovieId = request.MovieId,
@@ -80,17 +93,22 @@ public sealed class ReviewsController : ControllerBase
         this.dbContext.Reviews.Add(review);
         await this.dbContext.SaveChangesAsync();
 
-        return base.Created();
+        logger.LogInformation("Review created successfully with MovieId: {MovieId}, UserId: {UserId}", request.MovieId, request.UserId);
+
+        return Created();
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateReview(int id, ReviewRequest request)
     {
+        logger.LogInformation("Updating review with ID: {ReviewId}", id);
+
         var review = await this.dbContext.Reviews.FindAsync(id);
 
         if (review is null)
         {
-            return base.NotFound();
+            logger.LogWarning("Review with ID: {ReviewId} not found.", id);
+            return NotFound();
         }
 
         review.MovieId = request.MovieId;
@@ -100,22 +118,27 @@ public sealed class ReviewsController : ControllerBase
 
         await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
+        logger.LogInformation("Review with ID: {ReviewId} updated successfully.", id);
+        return Ok();
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteReview(int id)
     {
+        logger.LogInformation("Deleting review with ID: {ReviewId}", id);
+
         var review = await this.dbContext.Reviews.FindAsync(id);
 
         if (review is null)
         {
-            return base.NotFound();
+            logger.LogWarning("Review with ID: {ReviewId} not found.", id);
+            return NotFound();
         }
 
         this.dbContext.Reviews.Remove(review);
         await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
+        logger.LogInformation("Review with ID: {ReviewId} deleted successfully.", id);
+        return Ok();
     }
 }

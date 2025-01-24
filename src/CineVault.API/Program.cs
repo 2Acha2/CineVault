@@ -1,5 +1,6 @@
-using CineVault.API.Extensions;
+﻿using CineVault.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 [assembly: ApiController]
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,15 @@ builder.Services.AddCineVaultDbContext(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Logging.ClearProviders(); // Очищення стандартних провайдерів
+builder.Logging.AddConsole(options =>
+{
+    //options.IncludeScopes = true;
+    options.LogToStandardErrorThreshold = LogLevel.Warning;
+}
+);
+builder.Logging.AddDebug();
 
 var app = builder.Build();
 
