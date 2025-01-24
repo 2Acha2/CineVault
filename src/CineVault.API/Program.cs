@@ -32,7 +32,7 @@ if (app.Environment.IsLocal())
     app.UseDeveloperExceptionPage();
 }
 
-if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Local")
+if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Local" || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
