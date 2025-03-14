@@ -1,12 +1,13 @@
-﻿using CineVault.API.Controllers.Requests;
+﻿using Asp.Versioning;
+using CineVault.API.Controllers.Requests;
 using CineVault.API.Controllers.Responses;
 using CineVault.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace CineVault.API.Controllers;
-
+namespace CineVault.API.Controllers.V2;
+[ApiVersion(2)]
 [Route("api/[controller]/[action]")]
 public sealed class ReviewsController : ControllerBase
 {

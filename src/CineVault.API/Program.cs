@@ -1,4 +1,5 @@
-﻿using CineVault.API.Extensions;
+﻿using Asp.Versioning;
+using CineVault.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -13,7 +14,35 @@ builder.Services.AddCineVaultDbContext(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "CineVault API",
+        Version = "v1"
+    });
+    options.SwaggerDoc("v2", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "CineVault API",
+        Version = "v2"
+    });
+});
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1);
+    options.ReportApiVersions = true;
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("X-Api-Version"));
+})
+.AddMvc() // This is needed for controllers
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'V";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 
 builder.Logging.ClearProviders(); // Очищення стандартних провайдерів
 builder.Logging.AddConsole(options =>
@@ -43,7 +72,11 @@ if (app.Environment.IsLocal())
 if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Local" || app.Environment.IsProduction())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "CineVault API v1");
+        options.SwaggerEndpoint("/swagger/v2/swagger.json", "CineVault API v2");
+    });
 }
 
 app.UseMiddleware<RequestTimingMiddleware>();

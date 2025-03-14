@@ -1,11 +1,12 @@
-﻿using CineVault.API.Controllers.Requests;
+﻿using Asp.Versioning;
+using CineVault.API.Controllers.Requests;
 using CineVault.API.Controllers.Responses;
 using CineVault.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace CineVault.API.Controllers;
-
+namespace CineVault.API.Controllers.V2;
+[ApiVersion(2)]
 [Route("api/[controller]/[action]")]
 public sealed class MoviesController : ControllerBase
 {
@@ -36,7 +37,7 @@ public sealed class MoviesController : ControllerBase
             })
             .ToListAsync();
 
-        return base.Ok(movies);
+        return Ok(movies);
     }
 
     [HttpGet("{id}")]
@@ -48,7 +49,7 @@ public sealed class MoviesController : ControllerBase
 
         if (movie is null)
         {
-            return base.NotFound();
+            return NotFound();
         }
 
         var response = new MovieResponse
@@ -65,7 +66,7 @@ public sealed class MoviesController : ControllerBase
             ReviewCount = movie.Reviews.Count
         };
 
-        return base.Ok(response);
+        return Ok(response);
     }
 
     [HttpPost]
@@ -83,7 +84,7 @@ public sealed class MoviesController : ControllerBase
         await this.dbContext.Movies.AddAsync(movie);
         await this.dbContext.SaveChangesAsync();
 
-        return base.Created();
+        return Created();
     }
 
     [HttpPut("{id}")]
@@ -93,7 +94,7 @@ public sealed class MoviesController : ControllerBase
 
         if (movie is null)
         {
-            return base.NotFound();
+            return NotFound();
         }
 
         movie.Title = request.Title;
@@ -104,7 +105,7 @@ public sealed class MoviesController : ControllerBase
 
         await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
+        return Ok();
     }
 
     [HttpDelete("{id}")]
@@ -114,12 +115,12 @@ public sealed class MoviesController : ControllerBase
 
         if (movie is null)
         {
-            return base.NotFound();
+            return NotFound();
         }
 
         this.dbContext.Movies.Remove(movie);
         await this.dbContext.SaveChangesAsync();
 
-        return base.Ok();
+        return Ok();
     }
 }
