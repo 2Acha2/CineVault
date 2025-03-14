@@ -5,29 +5,79 @@ using CineVault.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 
 namespace CineVault.API.Controllers.V2;
+
 [ApiVersion(2)]
 [Route("api/[controller]/[action]")]
+[ApiController]
 public sealed class ReviewsController : ControllerBase
 {
-    private readonly CineVaultDbContext dbContext;
-    private readonly ILogger<ReviewsController> logger;
+    private readonly CineVaultDbContext _dbContext;
+    private readonly ILogger<ReviewsController> _logger;
 
     public ReviewsController(CineVaultDbContext dbContext, ILogger<ReviewsController> logger)
     {
-        this.dbContext = dbContext;
-        this.logger = logger;
+        _dbContext = dbContext;
+        _logger = logger;
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<ReviewResponse>>> GetReviews()
+    public async Task<ActionResult<List<ReviewResponse>>> GetReviews(
+        string? orderBy = "createdAt",
+        int page = 1,
+        int pageSize = 10)
     {
         try
         {
-            logger.LogInformation("Fetching all reviews from the database.");
+            _logger.LogInformation("Fetching reviews with sorting: {OrderBy}, page: {Page}, pageSize: {PageSize}", orderBy, page, pageSize);
 
-            var reviews = await this.dbContext.Reviews
+            var query = _dbContext.Reviews
+                .Include(r => r.Movie)
+                .Include(r => r.User)
+                .Select(r => new ReviewResponse
+                {
+                    Id = r.Id,
+                    MovieId = r.MovieId,
+                    MovieTitle = r.Movie!.Title,
+                    UserId = r.UserId,
+                    Username = r.User!.Username,
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt
+                });
+
+            query = orderBy switch
+            {
+                "rating" => query.OrderBy(r => r.Rating),
+                "rating_desc" => query.OrderByDescending(r => r.Rating),
+                _ => query.OrderByDescending(r => r.CreatedAt)
+            };
+
+            var reviews = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            _logger.LogInformation("Fetched {Count} reviews successfully.", reviews.Count);
+            return Ok(reviews);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching reviews.");
+            return StatusCode(500, "An error occurred while processing your request.");
+        }
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ReviewResponse>> GetReviewById(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching review with ID: {ReviewId}", id);
+
+            var review = await _dbContext.Reviews
                 .Include(r => r.Movie)
                 .Include(r => r.User)
                 .Select(r => new ReviewResponse
@@ -41,101 +91,89 @@ public sealed class ReviewsController : ControllerBase
                     Comment = r.Comment,
                     CreatedAt = r.CreatedAt
                 })
-                .ToListAsync();
-
-            logger.LogInformation("Fetched {Count} reviews successfully.", reviews.Count);
-            return Ok(reviews);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred while fetching reviews.");
-            return StatusCode(500, "An error occurred while processing your request.");
-        }
-    }
-
-    [HttpGet("{id}")]
-    public async Task<ActionResult<ReviewResponse>> GetReviewById(int id)
-    {
-        try
-        {
-            logger.LogInformation("Fetching review with ID: {ReviewId}", id);
-
-            var review = await this.dbContext.Reviews
-                .Include(r => r.Movie)
-                .Include(r => r.User)
-                .FirstOrDefaultAsync(review => review.Id == id);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (review is null)
             {
-                logger.LogWarning("Review with ID: {ReviewId} not found.", id);
+                _logger.LogWarning("Review with ID: {ReviewId} not found.", id);
                 return NotFound();
             }
 
-            logger.LogInformation("Fetched review with ID: {ReviewId} successfully.", id);
-
-            var response = new ReviewResponse
-            {
-                Id = review.Id,
-                MovieId = review.MovieId,
-                MovieTitle = review.Movie!.Title,
-                UserId = review.UserId,
-                Username = review.User!.Username,
-                Rating = review.Rating,
-                Comment = review.Comment,
-                CreatedAt = review.CreatedAt
-            };
-
-            return Ok(response);
+            _logger.LogInformation("Fetched review with ID: {ReviewId} successfully.", id);
+            return Ok(review);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error occurred while fetching review with ID: {ReviewId}", id);
+            _logger.LogError(ex, "Error occurred while fetching review with ID: {ReviewId}", id);
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
 
     [HttpPost]
-    public async Task<ActionResult> CreateReview(ReviewRequest request)
+    public async Task<ActionResult> CreateReview([FromBody] ReviewRequest request)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
-            logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.MovieId, request.UserId);
+            _logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.MovieId, request.UserId);
+
+            var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.MovieId);
+            var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.UserId);
+
+            if (!movieExists || !userExists)
+            {
+                return BadRequest("Invalid MovieId or UserId.");
+            }
 
             var review = new Review
             {
                 MovieId = request.MovieId,
                 UserId = request.UserId,
                 Rating = request.Rating,
-                Comment = request.Comment
+                Comment = request.Comment,
+                CreatedAt = DateTime.UtcNow
             };
 
-            this.dbContext.Reviews.Add(review);
-            await this.dbContext.SaveChangesAsync();
+            _dbContext.Reviews.Add(review);
+            await _dbContext.SaveChangesAsync();
 
-            logger.LogInformation("Review created successfully with MovieId: {MovieId}, UserId: {UserId}", request.MovieId, request.UserId);
-
-            return Created();
+            return CreatedAtRoute(nameof(GetReviewById), new { id = review.Id }, review);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error occurred while creating a review.");
+            _logger.LogError(ex, "Error occurred while creating a review.");
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> UpdateReview(int id, ReviewRequest request)
+    public async Task<ActionResult> UpdateReview(int id, [FromBody] ReviewRequest request)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
         try
         {
-            logger.LogInformation("Updating review with ID: {ReviewId}", id);
+            _logger.LogInformation("Updating review with ID: {ReviewId}", id);
 
-            var review = await this.dbContext.Reviews.FindAsync(id);
-
+            var review = await _dbContext.Reviews.FirstOrDefaultAsync(r => r.Id == id);
             if (review is null)
             {
-                logger.LogWarning("Review with ID: {ReviewId} not found.", id);
                 return NotFound();
+            }
+
+            var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.MovieId);
+            var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.UserId);
+
+            if (!movieExists || !userExists)
+            {
+                return BadRequest("Invalid MovieId or UserId.");
             }
 
             review.MovieId = request.MovieId;
@@ -143,14 +181,12 @@ public sealed class ReviewsController : ControllerBase
             review.Rating = request.Rating;
             review.Comment = request.Comment;
 
-            await this.dbContext.SaveChangesAsync();
-
-            logger.LogInformation("Review with ID: {ReviewId} updated successfully.", id);
+            await _dbContext.SaveChangesAsync();
             return Ok();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error occurred while updating review with ID: {ReviewId}", id);
+            _logger.LogError(ex, "Error occurred while updating review with ID: {ReviewId}", id);
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
@@ -160,25 +196,22 @@ public sealed class ReviewsController : ControllerBase
     {
         try
         {
-            logger.LogInformation("Deleting review with ID: {ReviewId}", id);
+            _logger.LogInformation("Deleting review with ID: {ReviewId}", id);
 
-            var review = await this.dbContext.Reviews.FindAsync(id);
-
+            var review = await _dbContext.Reviews.FirstOrDefaultAsync(r => r.Id == id);
             if (review is null)
             {
-                logger.LogWarning("Review with ID: {ReviewId} not found.", id);
                 return NotFound();
             }
 
-            this.dbContext.Reviews.Remove(review);
-            await this.dbContext.SaveChangesAsync();
+            _dbContext.Reviews.Remove(review);
+            await _dbContext.SaveChangesAsync();
 
-            logger.LogInformation("Review with ID: {ReviewId} deleted successfully.", id);
             return Ok();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error occurred while deleting review with ID: {ReviewId}", id);
+            _logger.LogError(ex, "Error occurred while deleting review with ID: {ReviewId}", id);
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
