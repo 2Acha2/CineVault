@@ -3,6 +3,7 @@ using CineVault.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Serilog;
+using MapsterMapper;
 [assembly: ApiController]
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,7 +13,9 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnC
 
 builder.Services.AddCineVaultDbContext(builder.Configuration);
 
+builder.Services.AddSingleton<IMapper, Mapper>();
 builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
