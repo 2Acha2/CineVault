@@ -1,11 +1,11 @@
 ﻿using Asp.Versioning;
-using CineVault.API.Controllers.Requests;
-using CineVault.API.Controllers.Responses;
+using CineVault.API.Models.Api;
+using CineVault.API.DTOs;
 using CineVault.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Mapster;
 using Microsoft.Extensions.Logging;
-using System.ComponentModel.DataAnnotations;
 
 namespace CineVault.API.Controllers.V2;
 
@@ -24,7 +24,7 @@ public sealed class ReviewsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<ReviewResponse>>> GetReviews(
+    public async Task<ActionResult<ApiResponseDto<List<ReviewDto>>>> GetReviews(
         string? orderBy = "createdAt",
         int page = 1,
         int pageSize = 10)
@@ -36,17 +36,7 @@ public sealed class ReviewsController : ControllerBase
             var query = _dbContext.Reviews
                 .Include(r => r.Movie)
                 .Include(r => r.User)
-                .Select(r => new ReviewResponse
-                {
-                    Id = r.Id,
-                    MovieId = r.MovieId,
-                    MovieTitle = r.Movie!.Title,
-                    UserId = r.UserId,
-                    Username = r.User!.Username,
-                    Rating = r.Rating,
-                    Comment = r.Comment,
-                    CreatedAt = r.CreatedAt
-                });
+                .ProjectToType<ReviewDto>();  // Виконує мапінг прямо у запиті
 
             query = orderBy switch
             {
@@ -61,7 +51,7 @@ public sealed class ReviewsController : ControllerBase
                 .ToListAsync();
 
             _logger.LogInformation("Fetched {Count} reviews successfully.", reviews.Count);
-            return Ok(reviews);
+            return Ok(ApiResponseDto<List<ReviewDto>>.Success(reviews, "Reviews retrieved successfully"));
         }
         catch (Exception ex)
         {
@@ -71,7 +61,7 @@ public sealed class ReviewsController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ReviewResponse>> GetReviewById(int id)
+    public async Task<ActionResult<ApiResponseDto<ReviewDto>>> GetReviewById(int id)
     {
         try
         {
@@ -80,27 +70,16 @@ public sealed class ReviewsController : ControllerBase
             var review = await _dbContext.Reviews
                 .Include(r => r.Movie)
                 .Include(r => r.User)
-                .Select(r => new ReviewResponse
-                {
-                    Id = r.Id,
-                    MovieId = r.MovieId,
-                    MovieTitle = r.Movie!.Title,
-                    UserId = r.UserId,
-                    Username = r.User!.Username,
-                    Rating = r.Rating,
-                    Comment = r.Comment,
-                    CreatedAt = r.CreatedAt
-                })
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (review is null)
             {
                 _logger.LogWarning("Review with ID: {ReviewId} not found.", id);
-                return NotFound();
+                return NotFound(ApiResponseDto<ReviewDto>.Failure("Review not found", 404));
             }
 
             _logger.LogInformation("Fetched review with ID: {ReviewId} successfully.", id);
-            return Ok(review);
+            return Ok(ApiResponseDto<ReviewDto>.Success(review.Adapt<ReviewDto>(), "Review retrieved successfully"));
         }
         catch (Exception ex)
         {
@@ -110,38 +89,33 @@ public sealed class ReviewsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult> CreateReview([FromBody] ReviewRequest request)
+    public async Task<ActionResult<ApiResponseDto<ReviewDto>>> CreateReview([FromBody] ApiRequestDto<ReviewDto> request)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return BadRequest(ApiResponseDto<ReviewDto>.Failure("Invalid data", 400));
         }
 
         try
         {
-            _logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.MovieId, request.UserId);
+            _logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
 
-            var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.MovieId);
-            var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.UserId);
+            var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.Data.MovieId);
+            var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.Data.UserId);
 
             if (!movieExists || !userExists)
             {
-                return BadRequest("Invalid MovieId or UserId.");
+                return BadRequest(ApiResponseDto<ReviewDto>.Failure("Invalid MovieId or UserId", 400));
             }
 
-            var review = new Review
-            {
-                MovieId = request.MovieId,
-                UserId = request.UserId,
-                Rating = request.Rating,
-                Comment = request.Comment,
-                CreatedAt = DateTime.UtcNow
-            };
+            var review = request.Data.Adapt<Review>();  // Автоматичний мапінг DTO → Entity
+            review.CreatedAt = DateTime.UtcNow;
 
             _dbContext.Reviews.Add(review);
             await _dbContext.SaveChangesAsync();
 
-            return CreatedAtRoute(nameof(GetReviewById), new { id = review.Id }, review);
+            return CreatedAtAction(nameof(GetReviewById), new { id = review.Id },
+                ApiResponseDto<ReviewDto>.Success(review.Adapt<ReviewDto>(), "Review created successfully", 201));
         }
         catch (Exception ex)
         {
@@ -151,38 +125,36 @@ public sealed class ReviewsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult> UpdateReview(int id, [FromBody] ReviewRequest request)
+    public async Task<ActionResult<ApiResponseDto<ReviewDto>>> UpdateReview(int id, [FromBody] ApiRequestDto<ReviewDto> request)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState);
+            return BadRequest(ApiResponseDto<ReviewDto>.Failure("Invalid data", 400));
         }
 
         try
         {
             _logger.LogInformation("Updating review with ID: {ReviewId}", id);
 
-            var review = await _dbContext.Reviews.FirstOrDefaultAsync(r => r.Id == id);
+            var review = await _dbContext.Reviews.FindAsync(id);
             if (review is null)
             {
-                return NotFound();
+                return NotFound(ApiResponseDto<ReviewDto>.Failure("Review not found", 404));
             }
 
-            var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.MovieId);
-            var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.UserId);
+            var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.Data.MovieId);
+            var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.Data.UserId);
 
             if (!movieExists || !userExists)
             {
-                return BadRequest("Invalid MovieId or UserId.");
+                return BadRequest(ApiResponseDto<ReviewDto>.Failure("Invalid MovieId or UserId", 400));
             }
 
-            review.MovieId = request.MovieId;
-            review.UserId = request.UserId;
-            review.Rating = request.Rating;
-            review.Comment = request.Comment;
+            var updateReview = request.Data with { Id = review.Id};
+            updateReview.Adapt(review);
 
             await _dbContext.SaveChangesAsync();
-            return Ok();
+            return Ok(ApiResponseDto<ReviewDto>.Success(review.Adapt<ReviewDto>(), "Review updated successfully"));
         }
         catch (Exception ex)
         {
@@ -192,22 +164,22 @@ public sealed class ReviewsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteReview(int id)
+    public async Task<ActionResult<ApiResponseDto<string>>> DeleteReview(int id)
     {
         try
         {
             _logger.LogInformation("Deleting review with ID: {ReviewId}", id);
 
-            var review = await _dbContext.Reviews.FirstOrDefaultAsync(r => r.Id == id);
+            var review = await _dbContext.Reviews.FindAsync(id);
             if (review is null)
             {
-                return NotFound();
+                return NotFound(ApiResponseDto<string>.Failure("Review not found", 404));
             }
 
             _dbContext.Reviews.Remove(review);
             await _dbContext.SaveChangesAsync();
 
-            return Ok();
+            return Ok(ApiResponseDto<string>.Success($"Review with ID {id} deleted successfully"));
         }
         catch (Exception ex)
         {
