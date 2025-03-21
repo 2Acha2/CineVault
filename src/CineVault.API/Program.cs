@@ -1,9 +1,9 @@
 ﻿using Asp.Versioning;
 using CineVault.API.Extensions;
+using CineVault.API.Mappings;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using Serilog;
-using MapsterMapper;
+using Mapster;
 [assembly: ApiController]
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +13,9 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnC
 
 builder.Services.AddCineVaultDbContext(builder.Configuration);
 
-builder.Services.AddSingleton<IMapper, Mapper>();
+builder.Services.AddMapster();
+MapsterConfig.RegisterMappings();
+
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
