@@ -35,6 +35,58 @@ public sealed class UsersController : ControllerBase
         return Ok(ApiResponseDto<List<UserDto>>.Success(users, "Users retrieved successfully"));
     }
 
+    [HttpGet]
+    public async Task<ActionResult<ApiResponseDto<List<UserDto>>>> SearchUsers(
+    string? username = null,
+    string? email = null,
+    DateTime? createdFrom = null,
+    DateTime? createdTo = null,
+    string? orderBy = "createdAt_desc",
+    int page = 1,
+    int pageSize = 10)
+    {
+        _logger.LogInformation("Searching users with filters - Username: {Username}, Email: {Email}, CreatedFrom: {CreatedFrom}, CreatedTo: {CreatedTo}, OrderBy: {OrderBy}, Page: {Page}, PageSize: {PageSize}",
+            username, email, createdFrom, createdTo, orderBy, page, pageSize);
+
+        var query = _dbContext.Users.AsQueryable();
+
+        if (!string.IsNullOrEmpty(username))
+        {
+            query = query.Where(u => u.Username.Contains(username));
+        }
+        if (!string.IsNullOrEmpty(email))
+        {
+            query = query.Where(u => u.Email.Contains(email));
+        }
+
+        if (createdFrom.HasValue)
+        {
+            query = query.Where(u => u.CreatedAt >= createdFrom.Value);
+        }
+        if (createdTo.HasValue)
+        {
+            query = query.Where(u => u.CreatedAt <= createdTo.Value);
+        }
+
+        query = orderBy switch
+        {
+            "username" => query.OrderBy(u => u.Username),
+            "username_desc" => query.OrderByDescending(u => u.Username),
+            "createdAt" => query.OrderBy(u => u.CreatedAt),
+            _ => query.OrderByDescending(u => u.CreatedAt) // createdAt_desc за замовчуванням
+        };
+
+        var totalUsers = await query.CountAsync();
+        var users = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+
+            .ProjectToType<UserDto>()
+            .ToListAsync();
+
+        return Ok(ApiResponseDto<List<UserDto>>.Success(users, $"Found {totalUsers} users"));
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponseDto<UserDto>>> GetUserById(int id)
     {
@@ -61,7 +113,8 @@ public sealed class UsersController : ControllerBase
 
         _logger.LogInformation("Creating a new user: {Username}", request.Data.Username);
 
-        var user = request.Data.Adapt<User>();  
+        var user = request.Data.Adapt<User>();
+        user.CreatedAt = DateTime.UtcNow;
 
         await _dbContext.Users.AddAsync(user);
         await _dbContext.SaveChangesAsync();
