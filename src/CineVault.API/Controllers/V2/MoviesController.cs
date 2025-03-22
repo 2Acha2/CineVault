@@ -58,6 +58,23 @@ public sealed class MoviesController : ControllerBase
             ApiResponseDto<MovieDto>.Success(movie.Adapt<MovieDto>(), "Movie created successfully", 201));
     }
 
+    [HttpPost]
+    public async Task<ActionResult<ApiResponseDto<int>>> BulkCreateMovies([FromBody] ApiRequestDto<List<MovieDto>> request)
+    {
+        if (request.Data == null || !request.Data.Any())
+        {
+            return BadRequest(ApiResponseDto<int>.Failure("Movie list cannot be empty", 400));
+        }
+
+        var movies = request.Data.Adapt<List<Movie>>(); // Mapster: DTO → Entity
+
+        await _dbContext.Movies.AddRangeAsync(movies);
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(ApiResponseDto<int>.Success(movies.Count, $"{movies.Count} movies added successfully"));
+    }
+
+
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponseDto<MovieDto>>> UpdateMovie(int id, [FromBody] ApiRequestDto<MovieDto> request)
     {
