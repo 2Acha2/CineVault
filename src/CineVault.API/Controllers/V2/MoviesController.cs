@@ -128,7 +128,7 @@ public sealed class MoviesController : ControllerBase
             return BadRequest(ApiResponseDto<int>.Failure("Movie list cannot be empty", 400));
         }
 
-        var movies = request.Data.Adapt<List<Movie>>(); // Mapster: DTO → Entity
+        var movies = request.Data.Adapt<List<Movie>>();
 
         await _dbContext.Movies.AddRangeAsync(movies);
         await _dbContext.SaveChangesAsync();
@@ -171,5 +171,35 @@ public sealed class MoviesController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         return Ok(ApiResponseDto<string>.Success($"Movie with ID {id} deleted successfully"));
+    }
+
+    [HttpDelete("DeleteMultiple")]
+    public async Task<ActionResult<ApiResponseDto<string>>> DeleteMovies([FromBody] ApiRequestDto<List<int>> request)
+    {
+        if (request.Data is null || !request.Data.Any())
+        {
+            return BadRequest(ApiResponseDto<string>.Failure("No movie IDs provided", 400));
+        }
+
+        var movies = await _dbContext.Movies
+            .Where(m => request.Data.Contains(m.Id))
+            .Include(m => m.Reviews)
+            .ToListAsync();
+
+        if (!movies.Any())
+        {
+            return NotFound(ApiResponseDto<string>.Failure("No matching movies found", 404));
+        }
+
+        var moviesWithReviews = movies.Where(m => m.Reviews.Any()).ToList();
+        var moviesToDelete = movies.Except(moviesWithReviews).ToList();
+
+        if (moviesToDelete.Any())
+        {
+            _dbContext.Movies.RemoveRange(moviesToDelete);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        return Ok(ApiResponseDto<string>.Success($"Deleted {moviesToDelete.Count} movies. {moviesWithReviews.Count} movies were not deleted due to existing reviews."));
     }
 }
