@@ -10,5 +10,6 @@ public sealed class Comment
 
     public Review? Review { get; set; }
     public User? User { get; set; }
+    public ICollection<Like> Likes { get; set; } = [];
 
 }

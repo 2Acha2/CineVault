@@ -9,4 +9,5 @@ public sealed class User
     public DateTime CreatedAt { get; set; }
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<Comment> Comments { get; set; } = [];
+    public ICollection<Like> Likes { get; set; } = [];
 }
