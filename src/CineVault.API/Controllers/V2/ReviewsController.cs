@@ -36,7 +36,7 @@ public sealed class ReviewsController : ControllerBase
             var query = _dbContext.Reviews
                 .Include(r => r.Movie)
                 .Include(r => r.User)
-                .ProjectToType<ReviewDto>();  // Виконує мапінг прямо у запиті
+                .ProjectToType<ReviewDto>();
 
             query = orderBy switch
             {
@@ -89,7 +89,7 @@ public sealed class ReviewsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponseDto<ReviewDto>>> CreateReview([FromBody] ApiRequestDto<ReviewDto> request)
+    public async Task<ActionResult<ApiResponseDto<ReviewDto>>> CreateOrUpdateReview([FromBody] ApiRequestDto<ReviewDto> request)
     {
         if (!ModelState.IsValid)
         {
@@ -98,20 +98,38 @@ public sealed class ReviewsController : ControllerBase
 
         try
         {
-            _logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
+            _logger.LogInformation("Checking if a review exists for MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
 
             var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.Data.MovieId);
             var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.Data.UserId);
 
             if (!movieExists || !userExists)
             {
-                return BadRequest(ApiResponseDto<ReviewDto>.Failure("Invalid MovieId or UserId", 400));
+                _logger.LogWarning("Invalid MovieId or UserId. MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
+                return BadRequest(ApiResponse<ReviewDto>.Failure("Invalid MovieId or UserId", 400));
             }
 
             if (request.Data.Rating is < 1 or > 10)
             {
-                return BadRequest(ApiResponseDto<string>.Failure("Rating must be between 1 and 10", 400));
+                _logger.LogWarning("Invalid rating value: {Rating} for MovieId: {MovieId}, UserId: {UserId}", request.Data.Rating, request.Data.MovieId, request.Data.UserId);
+                return BadRequest(ApiResponse<string>.Failure("Rating must be between 1 and 10", 400));
             }
+
+            var existingReview = await _dbContext.Reviews.FirstOrDefaultAsync(r =>
+                r.MovieId == request.Data.MovieId && r.UserId == request.Data.UserId);
+
+            if (existingReview is not null)
+            {
+                _logger.LogInformation("Updating existing review for MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
+
+                existingReview.Rating = request.Data.Rating;
+                existingReview.Comment = request.Data.Comment;
+
+                await _dbContext.SaveChangesAsync();
+                return Ok(ApiResponse<string>.Success("Review updated successfully"));
+            }
+
+            _logger.LogInformation("Creating a new review for MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
 
             var review = request.Data.Adapt<Review>();
             review.CreatedAt = DateTime.UtcNow;
@@ -124,7 +142,7 @@ public sealed class ReviewsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while creating a review.");
+            _logger.LogError(ex, "Error occurred while creating or updating a review for MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
