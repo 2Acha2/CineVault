@@ -8,4 +8,5 @@ public sealed class User
     public required string Password { get; set; }
     public DateTime CreatedAt { get; set; }
     public ICollection<Review> Reviews { get; set; } = [];
+    public ICollection<Comment> Comments { get; set; } = [];
 }

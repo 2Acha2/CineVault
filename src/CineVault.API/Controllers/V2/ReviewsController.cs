@@ -108,7 +108,12 @@ public sealed class ReviewsController : ControllerBase
                 return BadRequest(ApiResponseDto<ReviewDto>.Failure("Invalid MovieId or UserId", 400));
             }
 
-            var review = request.Data.Adapt<Review>();  // Автоматичний мапінг DTO → Entity
+            if (request.Data.Rating is < 1 or > 10)
+            {
+                return BadRequest(ApiResponseDto<string>.Failure("Rating must be between 1 and 10", 400));
+            }
+
+            var review = request.Data.Adapt<Review>();
             review.CreatedAt = DateTime.UtcNow;
 
             _dbContext.Reviews.Add(review);
