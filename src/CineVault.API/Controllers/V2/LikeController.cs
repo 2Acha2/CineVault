@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Mapster;
 
+// 5.Підтримка лайків для відгуків-коментарів з оцінкою
 namespace CineVault.API.Controllers.V2;
 
 [ApiVersion(2)]
@@ -47,6 +48,7 @@ public sealed class LikesController : ControllerBase
             return BadRequest(ApiResponseDto<string>.Failure("Like must be for either a review or a comment, not both", 400));
         }
 
+        // Додати можливість лайкати коментарі тільки зареєстрованим користувачам
         var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.Data.UserId);
         if (!userExists)
         {

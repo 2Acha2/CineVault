@@ -20,6 +20,7 @@ public sealed class CommentsController : ControllerBase
         _dbContext = dbContext;
     }
 
+    // Реалізувати CRUD для коментарів до відгуків
     [HttpGet]
     public async Task<ActionResult<ApiResponseDto<List<CommentDto>>>> GetAllComments()
     {

@@ -46,9 +46,10 @@ public sealed class MoviesController : ControllerBase
         return Ok(ApiResponseDto<MovieDto>.Success(movie.Adapt<MovieDto>(), "Movie retrieved successfully"));
     }
 
+    // 3. Пошук фільмів
     [HttpGet]
     public async Task<ActionResult<ApiResponseDto<List<MovieDto>>>> SearchMovies(
-    string? title = null,
+    string? title = null,       
     string? genre = null,
     string? director = null,
     int? releaseYear = null,
@@ -61,6 +62,7 @@ public sealed class MoviesController : ControllerBase
             .Include(m => m.Reviews)
             .AsQueryable();
 
+        // Реалізувати пошук фільмів за жанром, назвою або режисером.
         if (!string.IsNullOrEmpty(title))
         {
             query = query.Where(m => m.Title.Contains(title));
@@ -74,12 +76,11 @@ public sealed class MoviesController : ControllerBase
             query = query.Where(m => m.Director.Contains(director));
         }
 
-
+        // Додати фільтрацію за роком випуску та середнім рейтингом.
         if (releaseYear.HasValue)
         {
             query = query.Where(m => m.ReleaseDate.HasValue && m.ReleaseDate.Value.Year == releaseYear.Value);
         }
-
 
         if (averageRating.HasValue)
         {
@@ -120,6 +121,7 @@ public sealed class MoviesController : ControllerBase
             ApiResponseDto<MovieDto>.Success(movie.Adapt<MovieDto>(), "Movie created successfully", 201));
     }
 
+    // 1.Масове завантаження фільмів
     [HttpPost]
     public async Task<ActionResult<ApiResponseDto<int>>> BulkCreateMovies([FromBody] ApiRequestDto<List<MovieDto>> request)
     {
@@ -173,6 +175,7 @@ public sealed class MoviesController : ControllerBase
         return Ok(ApiResponseDto<string>.Success($"Movie with ID {id} deleted successfully"));
     }
 
+    // 7. Масове видалення фільмів
     [HttpDelete("DeleteMultiple")]
     public async Task<ActionResult<ApiResponseDto<string>>> DeleteMovies([FromBody] ApiRequestDto<List<int>> request)
     {
@@ -191,8 +194,8 @@ public sealed class MoviesController : ControllerBase
             return NotFound(ApiResponseDto<string>.Failure("No matching movies found", 404));
         }
 
-        var moviesWithReviews = movies.Where(m => m.Reviews.Any()).ToList();
-        var moviesToDelete = movies.Except(moviesWithReviews).ToList();
+        var moviesWithReviews = movies.Where(m => m.Reviews.Any()).ToList(); // Додати реалізацію для масового видалення за списком ID
+        var moviesToDelete = movies.Except(moviesWithReviews).ToList();     //•	Додати перевірку, чи є фільми у відгуках, перед видаленням. Якщо є, то не видаляти такий, а виводити попередження, а інші фільми з масиву видалити.
 
         if (moviesToDelete.Any())
         {

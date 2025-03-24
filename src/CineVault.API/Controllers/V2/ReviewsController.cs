@@ -88,6 +88,7 @@ public sealed class ReviewsController : ControllerBase
         }
     }
 
+    // 6. Унікальність відгуку 
     [HttpPost]
     public async Task<ActionResult<ApiResponseDto<ReviewDto>>> CreateOrUpdateReview([FromBody] ApiRequestDto<ReviewDto> request)
     {
@@ -103,12 +104,13 @@ public sealed class ReviewsController : ControllerBase
             var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.Data.MovieId);
             var userExists = await _dbContext.Users.AnyAsync(u => u.Id == request.Data.UserId);
 
+            // Ставити відгук може лише зареєстрований користувач
             if (!movieExists || !userExists)
             {
                 _logger.LogWarning("Invalid MovieId or UserId. MovieId: {MovieId}, UserId: {UserId}", request.Data.MovieId, request.Data.UserId);
                 return BadRequest(ApiResponse<ReviewDto>.Failure("Invalid MovieId or UserId", 400));
             }
-
+            // Додати можливість ставить відгуки з оцінкою-рейтингом(від 1 до 10)
             if (request.Data.Rating is < 1 or > 10)
             {
                 _logger.LogWarning("Invalid rating value: {Rating} for MovieId: {MovieId}, UserId: {UserId}", request.Data.Rating, request.Data.MovieId, request.Data.UserId);

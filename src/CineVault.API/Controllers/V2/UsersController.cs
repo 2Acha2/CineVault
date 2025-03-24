@@ -35,9 +35,10 @@ public sealed class UsersController : ControllerBase
         return Ok(ApiResponseDto<List<UserDto>>.Success(users, "Users retrieved successfully"));
     }
 
-    [HttpGet]
+    // 2. Пошук користувачів
+    [HttpGet]   // Використовувати GET-запит з параметрами запиту
     public async Task<ActionResult<ApiResponseDto<List<UserDto>>>> SearchUsers(
-    string? username = null,
+    string? username = null,    
     string? email = null,
     DateTime? createdFrom = null,
     DateTime? createdTo = null,
@@ -50,6 +51,7 @@ public sealed class UsersController : ControllerBase
 
         var query = _dbContext.Users.AsQueryable();
 
+        // Додати можливість пошуку користувачів за username або email
         if (!string.IsNullOrEmpty(username))
         {
             query = query.Where(u => u.Username.Contains(username));
@@ -68,7 +70,7 @@ public sealed class UsersController : ControllerBase
             query = query.Where(u => u.CreatedAt <= createdTo.Value);
         }
 
-        query = orderBy switch
+        query = orderBy switch      // Реалізувати фільтрацію за датою створення та сортування результатів
         {
             "username" => query.OrderBy(u => u.Username),
             "username_desc" => query.OrderByDescending(u => u.Username),
@@ -77,7 +79,7 @@ public sealed class UsersController : ControllerBase
         };
 
         var totalUsers = await query.CountAsync();
-        var users = await query
+        var users = await query     // Додати пагінацію для результатів пошуку
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
 

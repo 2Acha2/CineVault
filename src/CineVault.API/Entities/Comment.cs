@@ -8,7 +8,7 @@ public sealed class Comment
     public string? Content { get; set; }
     public required int Rating { get; set; }
 
-    public Review? Review { get; set; }
+    public Review? Review { get; set; }     // Зв'язати коментарі з користувачами та відгуками
     public User? User { get; set; }
     public ICollection<Like> Likes { get; set; } = [];
 
