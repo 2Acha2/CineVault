@@ -69,7 +69,10 @@ public sealed class LikesController : ControllerBase
         await _dbContext.Likes.AddAsync(like);
         await _dbContext.SaveChangesAsync();
 
-        return Created(string.Empty, ApiResponseDto<string>.Success("Like added successfully", "201"));
+        // 8. Доробити всі методи по створенню
+        var response = new { like.Id };
+        return Created(string.Empty, ApiResponseDto<object>.Success(response, "Like added successfully", 201));
+
     }
 
     [HttpDelete]

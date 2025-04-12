@@ -60,7 +60,10 @@ public sealed class CommentsController : ControllerBase
         await _dbContext.Comments.AddAsync(comment);
         await _dbContext.SaveChangesAsync();
 
-        return Created(string.Empty, ApiResponseDto<string>.Success("Comment created successfully", "201"));
+        // 8. Доробити всі методи по створенню
+        var response = new { comment.Id };
+        return CreatedAtAction(nameof(GetAllComments), null,
+            ApiResponseDto<object>.Success(response, "Comment created successfully", 201));
     }
 
     [HttpPut("{id}")]

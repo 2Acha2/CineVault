@@ -135,7 +135,10 @@ public sealed class MoviesController : ControllerBase
         await _dbContext.Movies.AddRangeAsync(movies);
         await _dbContext.SaveChangesAsync();
 
-        return Ok(ApiResponseDto<int>.Success(movies.Count, $"{movies.Count} movies added successfully"));
+        // 8. Доробити всі методи по створенню
+        var result = movies.Select(m => new { m.Id, m.Title }).ToList();
+        return Ok(ApiResponseDto<object>.Success(result, $"{result.Count} movies added successfully"));
+
     }
 
 
